@@ -1,0 +1,51 @@
+#
+# Main function which calculates score on cross_validation and prepares solution.
+#
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+
+from datasets import Dataset, save_predictions, load_cross_validation
+
+
+def save_predictions(y, test):
+    predictions = pd.DataFrame(y, columns=['predict_0', 'predict_1', 'predict_2'])
+    predictions['id'] = test['id']
+    predictions[['id', 'predict_0', 'predict_1', 'predict_2']].to_csv('../data/solution_rf.csv', index=False)
+
+def prepare_solution():
+    train = Dataset.from_train()
+    X = train.get_features()
+    Y = train.get_labels()
+    rf = RandomForestRegressor(n_jobs=-1)
+    model = rf.fit(X, Y)
+    print('Train dataset score: %f' % loss(Y, model.predict(X)))
+    test = Dataset.from_test()
+    X2 = test.get_features()
+    Y2 = model.predict(X2)
+    save_predictions(Y2, test.df)
+
+def cross_validate():
+    train, test = load_cross_validation()
+    u = train.pca()
+    X = train.get_pca_features(u)
+    Y = train.get_labels()
+    X2 = test.get_pca_features(u)
+    Y2 = test.get_labels()
+    rf = RandomForestRegressor(n_jobs=-1)
+    model = rf.fit(X, Y)
+    print('Cross validation score: %f' % loss(Y2, model.predict(X2)))
+
+
+def loss(expected, predicted):
+    predicted = np.minimum(predicted, 1-10**-15)
+    predicted = np.maximum(predicted, 10**-15)
+    ps = np.multiply(expected, np.log(predicted))
+    return -ps.sum().sum()/len(expected)
+
+if __name__ == "__main__":
+    cross_validate()
+    prepare_solution()
+
+
+
